@@ -2,20 +2,16 @@ import argparse
 import json
 import time
 
-from receptors.mock_generator.mock_generator import MockGenerator
-from receptors.moon_receptor.moon_receptor import MoonReceptor
+from receptors.mock.receptor import MockGenerator
+from receptors.moon.receptor import MoonReceptor
 from normalizer.normalizer import Normalizer
 from mapper.mapper import Mapper
-from controller.osc.osc_controller import OscController
+from controller.osc.controller import OscController
 
 RECEPTORS = {
-    "mock_generator": MockGenerator,
-    "moon_receptor": MoonReceptor,
+    "mock": MockGenerator,
+    "moon": MoonReceptor,
 }
-
-
-def build_receptor(config):
-    return RECEPTORS[config["type"]](**config.get("args", {}))
 
 
 def run():
@@ -28,10 +24,11 @@ def run():
 
     tick_interval = 1 / config["tick_rate"]
 
-    receptor = build_receptor(config["receptor"])
-    normalizer = Normalizer("normalizer/normalizer_config.json")
-    mapper = Mapper("mapper/mapper_config.json")
-    controller = OscController("controller/osc/osc_config.json")
+    receptor_config = config["receptor"]
+    receptor = RECEPTORS[receptor_config["type"]](**receptor_config.get("args", {}))
+    normalizer = Normalizer(config["normalizer"]["config_path"])
+    mapper = Mapper(config["mapper"]["config_path"])
+    controller = OscController(config["controller"]["config_path"])
 
     print("[Pipeline] Starting...")
 

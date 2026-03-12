@@ -1,7 +1,10 @@
 {
   "tick_rate": 30,
   "receptor": {
-    "type": "mock_generator",
-    "args": { "config_path": "receptors/mock_generator/mock_config.json" }
-  }
+    "type": "mock",
+    "args": { "config_path": "receptors/mock/config.json" }
+  },
+  "normalizer": { "config_path": "normalizer/normalizer_config.json" },
+  "mapper": { "config_path": "mapper/mapper_config.json" },
+  "controller": { "config_path": "controller/osc/osc_config.json" }
 }

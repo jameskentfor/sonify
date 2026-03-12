@@ -35,16 +35,25 @@ From the `sonify/` directory:
 python3 pipeline.py
 ```
 
-The pipeline reads `pipeline_config.json` to determine the tick rate and which receptor to use.
+Pass `--verbose` (or `-v`) to print each signal as it is sent:
+
+```bash
+python3 pipeline.py -v
+```
+
+The pipeline reads `pipeline_config.json` to determine the tick rate, receptor, and config paths for each stage.
 
 **Mock generator** (for testing):
 ```json
 {
   "tick_rate": 30,
   "receptor": {
-    "type": "mock_generator",
-    "args": { "config_path": "receptors/mock_generator/mock_config.json" }
-  }
+    "type": "mock",
+    "args": { "config_path": "receptors/mock/config.json" }
+  },
+  "normalizer": { "config_path": "normalizer/normalizer_config.json" },
+  "mapper": { "config_path": "mapper/mapper_config.json" },
+  "controller": { "config_path": "controller/osc/osc_config.json" }
 }
 ```
 
@@ -53,9 +62,12 @@ The pipeline reads `pipeline_config.json` to determine the tick rate and which r
 {
   "tick_rate": 30,
   "receptor": {
-    "type": "moon_receptor",
+    "type": "moon",
     "args": { "timezone": "UTC" }
-  }
+  },
+  "normalizer": { "config_path": "normalizer/normalizer_config.json" },
+  "mapper": { "config_path": "mapper/mapper_config.json" },
+  "controller": { "config_path": "controller/osc/osc_config.json" }
 }
 ```
 
@@ -63,18 +75,18 @@ The pipeline reads `pipeline_config.json` to determine the tick rate and which r
 
 | File | Purpose |
 |------|---------|
-| `sonify/pipeline_config.json` | Tick rate and receptor selection |
+| `sonify/pipeline_config.json` | Tick rate, receptor selection, and config paths for each stage |
 | `sonify/normalizer/normalizer_config.json` | Min/max bounds per signal ID |
 | `sonify/mapper/mapper_config.json` | Source → target ID mappings |
 | `sonify/controller/osc/osc_config.json` | OSC host, port, and address prefix |
-| `sonify/receptors/mock_generator/mock_config.json` | Mock signal ranges |
+| `sonify/receptors/mock/config.json` | Mock signal ranges |
 
 ## Receptors
 
 | Receptor | Description |
 |----------|-------------|
-| `mock_generator` | Generates random-walking test signals |
-| `moon_receptor` | Calculates moon phase and illumination using Meeus astronomical algorithms (Chapters 25 & 47) |
+| `mock` | Generates random-walking test signals |
+| `moon` | Calculates moon phase and illumination using Meeus astronomical algorithms (Chapters 25 & 47) |
 
 ### Moon receptor signals
 
@@ -83,31 +95,50 @@ The pipeline reads `pipeline_config.json` to determine the tick rate and which r
 | `moon_phase` | 0–360° | Ecliptic longitude difference between Moon and Sun |
 | `moon_illumination` | 0–100% | Percentage of lunar disk illuminated |
 
-To add a new receptor, implement a class with a `read()` method that yields `{id, value, ts}` dicts, then register it in `pipeline.py`.
+To add a new receptor, implement a class with a `read()` method that returns a list of `{id, value, ts}` dicts, then register it in `pipeline.py`.
 
-## Testing OSC output
+## SuperCollider integration
 
-The `test_osc.py` script runs the pipeline and `oscdump` together in a single terminal, logging all OSC output as it arrives. Run it from the `sonify/` directory:
+`controller/osc/sonify.scd` is a headless SuperCollider script that listens for OSC messages from the pipeline and drives a simple synth (filtered saw wave with controllable cutoff and pan).
+
+Start SuperCollider before the pipeline. On Linux with PipeWire:
 
 ```bash
-python3 test_osc.py
+pw-jack sclang controller/osc/sonify.scd
 ```
 
-Output looks like:
-
+Wait for:
 ```
-[osc] 0.000 /synth/filter_cutoff ,f 0.472
-[osc] 0.033 /synth/pan ,f 0.651
-[pipeline] [Pipeline] Starting...
+Sonify synth running.
+OSC responders registered. Listening on port 57120.
 ```
 
-Press `Ctrl+C` to stop both processes.
+Then start the pipeline in a second terminal:
 
-Alternatively, run `oscdump` manually to monitor messages without the pipeline wrapper:
+```bash
+python3 pipeline.py
+```
+
+### OSC messages handled by sonify.scd
+
+| Address | Range | Controls |
+|---------|-------|----------|
+| `/synth/filter_cutoff` | 0.0–1.0 → 200–8000 Hz | Filter cutoff frequency |
+| `/synth/pan` | 0.0–1.0 → −1.0 to 1.0 | Stereo pan position |
+
+### Dev container audio (Linux with PipeWire)
+
+The dev container mounts the host's PipeWire and PulseAudio sockets. `pw-jack` routes audio through PipeWire to your host's audio device, so no additional setup is needed beyond rebuilding the container after cloning.
+
+## Debugging OSC output
+
+To inspect raw OSC messages without SuperCollider running:
 
 ```bash
 oscdump 57120
 ```
+
+Note: `oscdump` and `sclang` both bind to port 57120, so only run one at a time.
 
 ## OSC output
 

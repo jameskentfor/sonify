@@ -17,6 +17,7 @@
     "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
     "workspaceFolder": "/workspace",
     "postCreateCommand": "bash .devcontainer/postCreate.sh",
+    "postStartCommand": "sudo chown -R $(id -un) /workspace",
     "customizations": {
         "vscode": {
             "extensions": ["ms-python.python"]

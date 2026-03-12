@@ -1,6 +1,0 @@
-{
-  "signals": {
-    "brightness": { "min": 200, "max": 1200 },
-    "motion_x":   { "min": -1.0, "max": 1.0 }
-  }
-}
